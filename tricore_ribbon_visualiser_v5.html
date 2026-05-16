@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TRICORE -- Forensic Ribbon Visualiser v5</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#050810;--panel:rgba(8,14,28,0.96);--border:rgba(64,120,220,0.2);--accent:#4078dc;--gold:#c8a84b;--green:#44ffaa;--red:#ff4466;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Bebas Neue',sans-serif;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:#e0e8f8;font-family:var(--sans);}
+#header{position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 14px 7px;background:linear-gradient(180deg,rgba(5,8,16,0.99) 0%,transparent 100%);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+#header h1{font-family:var(--display);font-size:21px;letter-spacing:3px;color:#fff;}
+#header .sub{font-family:var(--mono);font-size:7.5px;color:rgba(160,180,220,0.38);letter-spacing:1.5px;text-transform:uppercase;}
+#header .spacer{flex:1;}
+.hbtn{font-family:var(--mono);font-size:7.5px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:3px;background:rgba(64,120,220,0.1);border:1px solid var(--border);color:rgba(160,180,220,0.55);transition:all 0.2s;user-select:none;}
+.hbtn:hover{border-color:var(--accent);color:#fff;}
+.hbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.hbtn.spin{background:rgba(68,255,170,0.12);border-color:rgba(68,255,170,0.3);color:var(--green);}
+.hbtn.spin.active{background:var(--green);color:#050810;}
+#tabs{position:fixed;top:42px;left:50%;transform:translateX(-50%);z-index:30;display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.tab{font-family:var(--mono);font-size:7.5px;letter-spacing:1.5px;padding:4px 14px;cursor:pointer;text-transform:uppercase;color:rgba(160,180,220,0.45);background:var(--panel);border:none;transition:all 0.2s;}
+.tab.active{background:var(--accent);color:#fff;}
+#canvases{position:fixed;top:70px;left:0;right:0;bottom:24px;display:flex;}
+.canvas-wrap{position:relative;flex:1;overflow:hidden;border-right:1px solid var(--border);transition:flex 0.4s ease,opacity 0.3s;}
+.canvas-wrap:last-child{border-right:none;}
+.canvas-wrap.hidden{flex:0;opacity:0;pointer-events:none;}
+canvas{display:block;width:100%;height:100%;}
+.graph-label{position:absolute;top:7px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:7px;letter-spacing:1.5px;color:rgba(160,180,220,0.3);pointer-events:none;white-space:nowrap;text-transform:uppercase;}
+.graph-label span{color:var(--accent);}
+#status{position:fixed;bottom:0;left:0;right:0;z-index:30;height:24px;background:rgba(5,8,16,0.95);border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 14px;font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.3);}
+#status strong{color:rgba(160,180,220,0.55);}
+#essay-count{margin-left:auto;color:var(--gold);}
+.side-panel{position:fixed;z-index:25;top:70px;background:var(--panel);border:1px solid var(--border);border-radius:4px;backdrop-filter:blur(16px);overflow:hidden;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);}
+#legend{left:10px;width:196px;}#legend.collapsed{height:26px;}#legend.collapsed .panel-body{display:none;}
+#dimkey{right:10px;width:206px;}#dimkey.collapsed{height:26px;}#dimkey.collapsed .panel-body{display:none;}
+.panel-header{display:flex;align-items:center;gap:7px;padding:6px 9px;cursor:pointer;border-bottom:1px solid var(--border);user-select:none;min-height:26px;}
+.panel-header h2{font-family:var(--mono);font-size:7.5px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;flex:1;}
+.panel-chevron{font-size:7px;color:rgba(160,180,220,0.35);transition:transform 0.3s;}
+.collapsed .panel-chevron{transform:rotate(180deg);}
+.panel-body{padding:9px;}
+.essay-row{display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;border-radius:3px;transition:all 0.2s;user-select:none;}
+.essay-row:hover{background:rgba(64,120,220,0.08);}
+.essay-row.dimmed{opacity:0.2;}
+.swatch{width:18px;height:4px;border-radius:2px;flex-shrink:0;}
+.e-label{font-family:var(--mono);font-size:7px;line-height:1.4;flex:1;}
+.e-score{font-family:var(--mono);font-size:7px;color:var(--gold);}
+.e-group{font-family:var(--mono);font-size:6px;color:rgba(160,180,220,0.3);padding:2px 4px;border-radius:2px;border:1px solid rgba(64,120,220,0.15);}
+.dk-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
+.dk-enc{font-family:var(--mono);font-size:7px;color:rgba(180,200,240,0.5);}
+.dk-poles{font-family:var(--mono);font-size:6.5px;color:rgba(120,150,200,0.35);}
+.dk-marker{font-family:var(--mono);font-size:7px;font-weight:500;margin-right:4px;}
+.dk-sep{border-top:1px solid var(--border);margin:5px 0;}
+#data-panel{position:fixed;z-index:40;top:70px;left:50%;transform:translateX(-50%);width:540px;max-height:calc(100vh - 110px);background:var(--panel);border:1px solid var(--border);border-radius:6px;backdrop-filter:blur(20px);display:none;flex-direction:column;overflow:hidden;}
+#data-panel.open{display:flex;}
+.dp-head{display:flex;align-items:center;padding:12px 16px 10px;border-bottom:1px solid var(--border);gap:10px;flex-shrink:0;}
+.dp-head h2{font-family:var(--display);font-size:17px;letter-spacing:2px;color:#fff;flex:1;}
+.dp-tabs{display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+.dp-tab{font-family:var(--mono);font-size:7.5px;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;cursor:pointer;color:rgba(160,180,220,0.45);background:none;border:none;transition:all 0.2s;}
+.dp-tab.active{background:var(--accent);color:#fff;}
+.close-x{font-family:var(--mono);font-size:8px;color:rgba(160,180,220,0.35);cursor:pointer;padding:3px 7px;border:1px solid var(--border);border-radius:3px;transition:all 0.2s;}
+.close-x:hover{color:#fff;border-color:var(--accent);}
+.dp-body{padding:14px 16px;overflow-y:auto;flex:1;}
+.dp-body p{font-family:var(--mono);font-size:7.5px;color:rgba(160,180,220,0.45);margin-bottom:10px;line-height:1.7;}
+.form-row{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start;}
+.form-col{display:flex;flex-direction:column;gap:3px;flex:1;}
+label{font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.45);letter-spacing:1px;text-transform:uppercase;}
+input[type=text],input[type=number],input[type=color],select{background:rgba(5,8,16,0.8);border:1px solid var(--border);border-radius:3px;color:#e0e8f8;font-family:var(--mono);font-size:8.5px;padding:5px 7px;width:100%;outline:none;transition:border-color 0.2s;}
+input:focus,select:focus{border-color:var(--accent);}
+input[type=color]{padding:2px;height:26px;cursor:pointer;}
+select option{background:#0a1020;}
+.schema-table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+.schema-table th{font-family:var(--mono);font-size:6.5px;letter-spacing:1px;text-transform:uppercase;color:rgba(160,180,220,0.35);padding:3px 5px;text-align:center;border-bottom:1px solid var(--border);}
+.schema-table td{padding:2px 3px;}
+.schema-table td input{text-align:center;padding:3px 2px;font-size:8px;width:44px;}
+.schema-name{font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.35);padding:3px 5px !important;text-align:left !important;}
+.remove-row{background:none;border:none;color:rgba(220,80,80,0.35);cursor:pointer;font-size:11px;padding:0 3px;transition:color 0.2s;}
+.remove-row:hover{color:rgba(220,80,80,0.85);}
+.add-schema-btn{font-family:var(--mono);font-size:7px;padding:4px 10px;cursor:pointer;border-radius:3px;border:1px dashed rgba(64,120,220,0.25);color:rgba(160,180,220,0.35);background:none;width:100%;margin-bottom:7px;transition:all 0.2s;}
+.add-schema-btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn-row{display:flex;gap:7px;margin-top:10px;}
+.dp-btn{font-family:var(--mono);font-size:7.5px;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:rgba(64,120,220,0.1);color:rgba(160,180,220,0.6);transition:all 0.2s;flex:1;}
+.dp-btn:hover{border-color:var(--accent);color:#fff;}
+.dp-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.dp-btn.primary:hover{background:#5088ec;}
+.group-card{background:rgba(5,8,16,0.6);border:1px solid var(--border);border-radius:4px;padding:9px;margin-bottom:8px;}
+.group-card-head{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.group-swatch{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.group-name{font-family:var(--mono);font-size:8px;flex:1;color:#e0e8f8;}
+.group-btn{font-family:var(--mono);font-size:7px;padding:3px 8px;cursor:pointer;border-radius:3px;border:1px solid var(--border);background:none;color:rgba(160,180,220,0.5);transition:all 0.2s;}
+.group-btn:hover{border-color:var(--accent);color:#fff;}
+.group-btn.danger{border-color:rgba(220,80,80,0.2);color:rgba(220,80,80,0.4);}
+.group-btn.danger:hover{border-color:rgba(220,80,80,0.6);color:rgba(220,80,80,0.9);}
+.group-essays{font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.35);line-height:1.8;}
+.group-fit-info{font-family:var(--mono);font-size:7px;color:var(--green);margin-top:4px;}
+.essay-list-item{display:flex;align-items:center;gap:7px;padding:4px 7px;border-radius:3px;border:1px solid var(--border);margin-bottom:4px;}
+.eli-swatch{width:16px;height:4px;border-radius:2px;flex-shrink:0;}
+.eli-name{font-family:var(--mono);font-size:7.5px;flex:1;}
+.eli-score{font-family:var(--mono);font-size:7px;color:var(--gold);}
+.eli-del{background:none;border:none;color:rgba(220,80,80,0.3);cursor:pointer;font-size:10px;transition:color 0.2s;}
+.eli-del:hover{color:rgba(220,80,80,0.8);}
+.checkbox-row{display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;}
+.checkbox-row input{accent-color:var(--accent);}
+.checkbox-row label{font-family:var(--mono);font-size:7.5px;color:rgba(160,180,220,0.6);cursor:pointer;}
+.section-title{font-family:var(--mono);font-size:7.5px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;margin-top:4px;}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>TRICORE</h1><span class="sub">Forensic Ribbon Visualiser v5</span>
+  <div class="spacer"></div>
+  <button class="hbtn spin" id="rotate-btn" onclick="toggleRotate()">&#8635; ROTATE</button>
+  <button class="hbtn" id="desat-btn" onclick="toggleDesat()" style="background:rgba(100,80,160,0.12);border-color:rgba(120,100,200,0.25);color:rgba(160,140,220,0.6);">&#9680; DESAT</button>
+  <button class="hbtn" onclick="setView('split',null)">SPLIT</button>
+  <button class="hbtn" onclick="setView('left',null)">A</button>
+  <button class="hbtn" onclick="setView('right',null)">B</button>
+  <button class="hbtn active" id="data-btn" onclick="toggleDataPanel()">+ DATA</button>
+</div>
+<div id="tabs">
+  <button class="tab active" onclick="setView('split',this)">A + B</button>
+  <button class="tab" onclick="setView('left',this)">GRAPH A</button>
+  <button class="tab" onclick="setView('right',this)">GRAPH B</button>
+</div>
+<div id="canvases">
+  <div class="canvas-wrap" id="wrap-a">
+    <div class="graph-label">A &mdash; <span>CONSTRAINT</span> &times; <span>INHERITANCE</span> &times; <span>SPECIFICITY</span></div>
+    <canvas id="canvas-a"></canvas>
+  </div>
+  <div class="canvas-wrap" id="wrap-b">
+    <div class="graph-label">B &mdash; <span>REGISTER</span> &times; <span>DERIVATION</span> &times; <span>COHERENCE</span></div>
+    <canvas id="canvas-b"></canvas>
+  </div>
+</div>
+<div class="side-panel" id="legend">
+  <div class="panel-header" id="legend-header"><h2>Essays</h2><span class="panel-chevron">&#9650;</span></div>
+  <div class="panel-body"><div id="legend-rows"></div><div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-family:var(--mono);font-size:6.5px;color:rgba(160,180,220,0.25);line-height:1.7;">DBL-TAP header to collapse &middot; CLICK row to toggle</div></div>
+</div>
+<div class="side-panel" id="dimkey">
+  <div class="panel-header" id="dimkey-header"><h2>Dimensions</h2><span class="panel-chevron">&#9650;</span></div>
+  <div class="panel-body">
+    <div style="font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.3);margin-bottom:5px;">Graph A:</div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#7eb8f7">X</span><span class="dk-enc">CONSTRAINT</span></div><div class="dk-poles">EXPLICIT&#8596;MISSING</div></div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#7ef7b8">Y</span><span class="dk-enc">INHERITANCE</span></div><div class="dk-poles">TOP_DOWN&#8596;BOTTOM_UP</div></div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#f7c87e">Z</span><span class="dk-enc">SPECIFICITY</span></div><div class="dk-poles">SPEC_4&#8596;SPEC_0</div></div>
+    <div class="dk-sep"></div>
+    <div style="font-family:var(--mono);font-size:7px;color:rgba(160,180,220,0.3);margin-bottom:5px;">Graph B:</div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#f77eb8">X</span><span class="dk-enc">REGISTER</span></div><div class="dk-poles">EPISTEMIC&#8596;ABSENT</div></div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#c87ef7">Y</span><span class="dk-enc">DERIVATION</span></div><div class="dk-poles">DERIVED&#8596;JUMPED</div></div>
+    <div class="dk-row"><div><span class="dk-marker" style="color:#f7e07e">Z</span><span class="dk-enc">COHERENCE</span></div><div class="dk-poles">INAUDIBLE&#8596;DISSONANT</div></div>
+    <div class="dk-sep"></div>
+    <div class="dk-row"><span class="dk-enc" style="color:var(--green);">BEST FIT</span><div class="dk-poles">dashed white ribbon</div></div>
+  </div>
+</div>
+<div id="data-panel">
+  <div class="dp-head">
+    <h2>DATA</h2>
+    <div class="dp-tabs">
+      <button class="dp-tab active" onclick="switchDpTab('essays',this)">ESSAYS</button>
+      <button class="dp-tab" onclick="switchDpTab('groups',this)">GROUPS + FIT</button>
+    </div>
+    <span class="close-x" onclick="toggleDataPanel()">&#10005;</span>
+  </div>
+  <div class="dp-body" id="dp-essays">
+    <div class="section-title">Current Essays</div><div id="essay-list"></div>
+    <div class="section-title">Add New Essay</div>
+    <div class="form-row">
+      <div class="form-col"><label>Name</label><input type="text" id="inp-name" placeholder="GPT4_essay_01"></div>
+      <div class="form-col" style="max-width:72px;"><label>Score %</label><input type="number" id="inp-score" placeholder="0-100" min="0" max="100"></div>
+      <div class="form-col" style="max-width:56px;"><label>Colour</label><input type="color" id="inp-color" value="#ff44ff"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-col"><label>Label</label><input type="text" id="inp-label" placeholder="GPT-4 essay"></div>
+      <div class="form-col" style="max-width:120px;"><label>Group</label><select id="inp-group"><option value="">&#8212; none &#8212;</option></select></div>
+    </div>
+    <p>Per-schema readings 0.0&#8211;1.0 from DeepSeek Level 2 v3 output.</p>
+    <table class="schema-table"><thead><tr><th style="text-align:left;">Schema</th><th>Constr</th><th>Inherit</th><th>Spec</th><th>Reg</th><th>Deriv</th><th>Cohere</th><th></th></tr></thead><tbody id="schema-rows"></tbody></table>
+    <button class="add-schema-btn" onclick="addSchemaRow()">+ ADD SCHEMA ROW</button>
+    <div class="btn-row"><button class="dp-btn" onclick="resetForm()">CLEAR</button><button class="dp-btn primary" onclick="addEssay()">PLOT ESSAY</button></div>
+  </div>
+  <div class="dp-body" id="dp-groups" style="display:none;">
+    <p>Group essays that share a scenario. The system calculates the ribbon of best fit: the mean schema path across all essays in the group.</p>
+    <div class="section-title">Create Group</div>
+    <div class="form-row">
+      <div class="form-col"><label>Group Name</label><input type="text" id="grp-name" placeholder="e.g. HUMAN_BASELINE"></div>
+      <div class="form-col" style="max-width:56px;"><label>Colour</label><input type="color" id="grp-color" value="#ffffff"></div>
+    </div>
+    <div class="form-col" style="margin-bottom:9px;"><label>Select Essays to Include</label><div id="grp-essay-checkboxes" style="margin-top:5px;max-height:120px;overflow-y:auto;"></div></div>
+    <div class="btn-row"><button class="dp-btn primary" onclick="createGroup()">CREATE GROUP + COMPUTE FIT</button></div>
+    <div class="section-title" style="margin-top:14px;">Active Groups</div>
+    <div id="group-list"></div>
+  </div>
+</div>
+<div id="status">
+  <span><strong>DRAG</strong> rotate</span><span><strong>SCROLL</strong> zoom</span><span><strong>DBL-TAP</strong> panel to collapse</span>
+  <span id="desat-hint" style="color:rgba(160,140,220,0.5);font-style:italic;"></span><span id="essay-count"></span>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const essays=[
+  {name:"HUMAN_01",label:"Pure Human Student",score:0,groupId:null,col:new THREE.Color(0xff4444),visible:true,schemas:[[0.0,0.0,0.0,0.0,0.3,0.5],[0.0,0.0,0.4,0.0,0.2,0.4],[0.0,0.0,0.4,0.0,0.2,0.4],[0.0,0.0,0.0,0.0,0.1,0.3]]},
+  {name:"AI_01",label:"Early Model",score:35,groupId:null,col:new THREE.Color(0xff9933),visible:true,schemas:[[0.1,0.1,0.0,0.0,0.3,0.5],[0.0,0.1,0.0,0.0,0.3,0.5],[0.0,0.1,0.0,0.0,0.3,0.5],[0.0,0.1,0.0,0.0,0.3,0.5],[0.0,0.1,0.0,0.0,0.3,0.5]]},
+  {name:"DeepSeek",label:"TAMPER ZONE 3 Layers",score:55,groupId:null,col:new THREE.Color(0xffdd44),visible:true,schemas:[[0.3,0.3,0.0,0.2,0.4,0.6],[0.8,0.7,0.6,0.8,0.8,0.8],[0.8,0.7,0.5,0.8,0.8,0.8],[0.3,0.1,0.3,0.2,0.3,0.2],[0.2,0.1,0.4,0.2,0.4,0.3],[0.4,0.1,0.7,0.2,0.4,0.3],[0.1,0.0,0.0,0.6,0.2,0.0]]},
+  {name:"Sophisticated AI",label:"High Quality Internal Seam",score:88,groupId:null,col:new THREE.Color(0x44aaff),visible:true,schemas:[[0.9,0.9,0.0,0.5,0.8,0.9],[1.0,0.9,0.9,0.9,1.0,1.0],[1.0,0.9,0.8,0.9,1.0,1.0],[1.0,0.9,0.9,0.9,1.0,1.0],[1.0,0.8,0.8,0.9,0.9,1.0],[0.5,0.3,0.0,0.4,0.7,0.9],[0.7,0.8,0.0,0.6,0.8,0.9]]},
+  {name:"Claude 02",label:"Peak Analytical Perfect Chain",score:95,groupId:null,col:new THREE.Color(0x44ffaa),visible:true,schemas:[[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0],[0.7,0.9,0.5,0.7,0.8,0.9],[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0],[1.0,1.0,0.5,1.0,1.0,1.0]]}
+];
+const groups=[];let groupIdCounter=0;
+function computeBestFit(ei){const tl=Math.round(ei.reduce((s,i)=>s+essays[i].schemas.length,0)/ei.length);const nm=ei.map(i=>{const sc=essays[i].schemas,r=[];for(let t=0;t<tl;t++){const p=t/(tl-1)*(sc.length-1),lo=Math.floor(p),hi=Math.min(lo+1,sc.length-1),f=p-lo;r.push(sc[lo].map((v,d)=>v+(sc[hi][d]-v)*f));}return r;});const fit=[];for(let i=0;i<tl;i++){const a=[0,0,0,0,0,0];nm.forEach(n=>n[i].forEach((v,d)=>a[d]+=v));fit.push(a.map(v=>v/ei.length));}return fit;}
+function makeScene(ce,dimFn){
+  const renderer=new THREE.WebGLRenderer({canvas:ce,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x050810,0.055);
+  const camera=new THREE.PerspectiveCamera(50,1,0.1,100);let theta=0.6,phi=0.65,radius=14,autoRot=false;
+  function uc(){camera.position.x=radius*Math.sin(phi)*Math.sin(theta);camera.position.y=radius*Math.cos(phi);camera.position.z=radius*Math.sin(phi)*Math.cos(theta);camera.lookAt(0,0,0);}uc();
+  scene.add(new THREE.AmbientLight(0x1a2a4a,0.9));const dir=new THREE.DirectionalLight(0x4488ff,1.0);dir.position.set(5,8,5);scene.add(dir);const fill=new THREE.PointLight(0x2244aa,0.5,25);fill.position.set(-5,-3,-5);scene.add(fill);
+  const S=5;[[1,0,0,0x7eb8f7],[0,1,0,0x7ef7b8],[0,0,1,0xf7c87e]].forEach(([x,y,z,c])=>{const m=new THREE.LineBasicMaterial({color:c,opacity:0.15,transparent:true});scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-x*S,-y*S,-z*S),new THREE.Vector3(x*S,y*S,z*S)]),m));});
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10),new THREE.MeshBasicMaterial({color:0x334466,transparent:true,opacity:0.5})));
+  const grid=new THREE.GridHelper(10,10,0x0d1a30,0x080f1e);grid.position.y=-S;scene.add(grid);
+  const rG={},fR={};
+  function bT(schemas,color,isfit,eid){const pts=schemas.map(s=>{const m=dimFn(s);return new THREE.Vector3(m.x*S,m.y*S,m.z*S);});if(pts.length<2)return null;const curve=new THREE.CatmullRomCurve3(pts,false,"catmullrom",0.4);const segs=schemas.length*20,rs=isfit?6:10,off=isfit?0:(eid||0)*0.055,pos=[],cols=[],norms=[],uvs=[],idxs=[];for(let i=0;i<=segs;i++){const t=i/segs,pt=curve.getPoint(t),st=t*(schemas.length-1),si=Math.floor(st),sf=st-si,sA=schemas[Math.min(si,schemas.length-1)],sB=schemas[Math.min(si+1,schemas.length-1)],lr=(a,b,f)=>a+(b-a)*f,deriv=lr(sA[4],sB[4],sf),cohere=lr(sA[5],sB[5],sf),reg=lr(sA[3],sB[3],sf),rad=isfit?0.06:0.04+deriv*0.18+off,twist=isfit?0:(1-cohere)*Math.PI*4*t;let fc;if(isfit){fc=new THREE.Color(1,1,1);}else{const rc=new THREE.Color().lerpColors(new THREE.Color(0xff2222),new THREE.Color(0x2277ff),reg);fc=new THREE.Color().lerpColors(rc,color,0.45);}const tang=curve.getTangent(t).normalize();let up=new THREE.Vector3(0,1,0);if(Math.abs(tang.dot(up))>0.95)up.set(1,0,0);const bi=new THREE.Vector3().crossVectors(tang,up).normalize(),nm2=new THREE.Vector3().crossVectors(bi,tang).normalize();for(let j=0;j<=rs;j++){const a=(j/rs)*Math.PI*2+twist,s=Math.sin(a),c=Math.cos(a),vx=nm2.x*c+bi.x*s,vy=nm2.y*c+bi.y*s,vz=nm2.z*c+bi.z*s;pos.push(pt.x+vx*rad,pt.y+vy*rad,pt.z+vz*rad);cols.push(fc.r,fc.g,fc.b);norms.push(vx,vy,vz);uvs.push(j/rs,t);}}for(let i=0;i<segs;i++)for(let j=0;j<rs;j++){const a=i*(rs+1)+j,b=(i+1)*(rs+1)+j,c=(i+1)*(rs+1)+(j+1),d=i*(rs+1)+(j+1);idxs.push(a,b,d,b,c,d);}const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));geo.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));geo.setAttribute("normal",new THREE.Float32BufferAttribute(norms,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idxs);const mat=isfit?new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.55,wireframe:true}):new THREE.MeshPhongMaterial({vertexColors:true,shininess:90,transparent:true,opacity:0.88,side:THREE.DoubleSide});return new THREE.Mesh(geo,mat);}
+  function bR(essay,idx){if(rG[idx]){rG[idx].mesh&&scene.remove(rG[idx].mesh);(rG[idx].nodes||[]).forEach(n=>scene.remove(n));}const mesh=bT(essay.schemas,essay.col,false,idx);if(!mesh)return;mesh.visible=essay.visible;scene.add(mesh);const nodes=[];essay.schemas.forEach(s=>{const m=dimFn(s),p=new THREE.Vector3(m.x*S,m.y*S,m.z*S),rc=new THREE.Color().lerpColors(new THREE.Color(0xff2222),new THREE.Color(0x2277ff),s[3]),fc=new THREE.Color().lerpColors(rc,essay.col,0.45),sp=new THREE.Mesh(new THREE.SphereGeometry(0.05+s[4]*0.08,10,10),new THREE.MeshPhongMaterial({color:fc,shininess:120}));sp.position.copy(p);sp.visible=essay.visible;scene.add(sp);nodes.push(sp);});if(essay.name==="DeepSeek")[2,5].forEach(ix=>{if(ix>=essay.schemas.length)return;const m=dimFn(essay.schemas[ix]),p=new THREE.Vector3(m.x*S,m.y*S,m.z*S),tor=new THREE.Mesh(new THREE.TorusGeometry(0.23,0.02,8,32),new THREE.MeshBasicMaterial({color:0xffaa00,transparent:true,opacity:0.7}));tor.position.copy(p);tor.userData.isSeam=true;tor.visible=essay.visible;scene.add(tor);nodes.push(tor);});rG[idx]={mesh,nodes};}
+  function bFR(id,fs,col){if(fR[id]){scene.remove(fR[id]);delete fR[id];}const mesh=bT(fs,col,true,0);if(!mesh)return;mesh.userData.isFit=true;scene.add(mesh);fR[id]=mesh;}
+  function rFR(id){if(fR[id]){scene.remove(fR[id]);delete fR[id];}}
+  essays.forEach((e,i)=>bR(e,i));
+  let isDrag=false,px=0,py=0,pD=null;
+  ce.addEventListener("mousedown",e=>{isDrag=true;px=e.clientX;py=e.clientY;});
+  window.addEventListener("mouseup",()=>isDrag=false);
+  ce.addEventListener("mousemove",e=>{if(!isDrag)return;theta-=(e.clientX-px)*0.007;phi=Math.max(0.1,Math.min(Math.PI-0.1,phi+(e.clientY-py)*0.007));px=e.clientX;py=e.clientY;uc();});
+  ce.addEventListener("wheel",e=>{radius=Math.max(3,Math.min(35,radius+e.deltaY*0.025));uc();e.preventDefault();},{passive:false});
+  ce.addEventListener("touchstart",e=>{e.preventDefault();if(e.touches.length===1){isDrag=true;px=e.touches[0].clientX;py=e.touches[0].clientY;pD=null;}else if(e.touches.length===2){isDrag=false;const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pD=Math.sqrt(dx*dx+dy*dy);}},{passive:false});
+  ce.addEventListener("touchmove",e=>{e.preventDefault();if(e.touches.length===1&&isDrag){theta-=(e.touches[0].clientX-px)*0.007;phi=Math.max(0.1,Math.min(Math.PI-0.1,phi+(e.touches[0].clientY-py)*0.007));px=e.touches[0].clientX;py=e.touches[0].clientY;uc();}else if(e.touches.length===2&&pD!==null){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY,nd=Math.sqrt(dx*dx+dy*dy);radius=Math.max(3,Math.min(35,radius*(pD/nd)));pD=nd;uc();}},{passive:false});
+  ce.addEventListener("touchend",e=>{if(e.touches.length===0){isDrag=false;pD=null;}else if(e.touches.length===1)pD=null;});
+  new ResizeObserver(()=>{const w=ce.clientWidth,h=ce.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}).observe(ce);
+  return{scene,camera,renderer,ribbonGroups:rG,fitRibbons:fR,buildRibbon:bR,buildFitRibbon:bFR,removeFitRibbon:rFR,
+    updateVisibility(idx,vis){const g=rG[idx];if(!g)return;g.mesh&&(g.mesh.visible=vis);(g.nodes||[]).forEach(n=>n.visible=vis);},
+    setAutoRotate(v){autoRot=v;},
+    animate(t){if(autoRot){theta+=0.003;uc();}scene.children.forEach(c=>{if(c.userData&&c.userData.isSeam){c.rotation.x=t*1.2;c.rotation.y=t*0.8;if(c.material)c.material.opacity=0.5+0.3*Math.sin(t*3);}if(c.userData&&c.userData.isFit){c.material.opacity=0.3+0.25*Math.sin(t*2);}});renderer.render(scene,camera);},
+    rebuildAll(){Object.keys(rG).forEach(k=>{const g=rG[k];if(g){g.mesh&&scene.remove(g.mesh);(g.nodes||[]).forEach(n=>scene.remove(n));}});Object.keys(rG).forEach(k=>delete rG[k]);essays.forEach((e,i)=>bR(e,i));}};
+}
+const sceneA=makeScene(document.getElementById("canvas-a"),s=>({x:s[0]*2-1,y:s[1]*2-1,z:s[2]*2-1}));
+const sceneB=makeScene(document.getElementById("canvas-b"),s=>({x:s[3]*2-1,y:s[4]*2-1,z:s[5]*2-1}));
+let autoRotating=false;
+function toggleRotate(){autoRotating=!autoRotating;sceneA.setAutoRotate(autoRotating);sceneB.setAutoRotate(autoRotating);document.getElementById("rotate-btn").classList.toggle("active",autoRotating);}
+let desatMode=false,activeGroupForDesat=null;
+function getGroupFitAtT(g,t){const fs=g.fitSchemas,pos=t*(fs.length-1),lo=Math.floor(pos),hi=Math.min(lo+1,fs.length-1),f=pos-lo;return fs[lo].map((v,d)=>v+(fs[hi][d]-v)*f);}
+function rebuildWithDesat(so,dimFn,desat,gf){essays.forEach((essay,idx)=>{const g=so.ribbonGroups[idx];if(g){g.mesh&&so.scene.remove(g.mesh);(g.nodes||[]).forEach(n=>so.scene.remove(n));}delete so.ribbonGroups[idx];if(essay.schemas.length<2)return;const S=5,pts=essay.schemas.map(s=>{const m=dimFn(s);return new THREE.Vector3(m.x*S,m.y*S,m.z*S);}),curve=new THREE.CatmullRomCurve3(pts,false,"catmullrom",0.4),segs=essay.schemas.length*20,rs=10,off=idx*0.04,pos=[],cols=[],norms=[],uvs=[],idxs=[];for(let i=0;i<=segs;i++){const t=i/segs,pt=curve.getPoint(t),st=t*(essay.schemas.length-1),si=Math.floor(st),sf=st-si,sA=essay.schemas[Math.min(si,essay.schemas.length-1)],sB=essay.schemas[Math.min(si+1,essay.schemas.length-1)],lr=(a,b,f)=>a+(b-a)*f,deriv=lr(sA[4],sB[4],sf),cohere=lr(sA[5],sB[5],sf),reg=lr(sA[3],sB[3],sf);let rad;if(desat&&gf){const fv=getGroupFitAtT(gf,t),st2=sA.map((v,d)=>lr(v,sB[d],sf));let dev=0;st2.forEach((v,d)=>{const diff=v-fv[d];dev+=diff*diff;});dev=Math.sqrt(dev/6);rad=0.01+dev*0.6+off*0.3;}else{rad=0.04+deriv*0.18+off;}const twist=desat?(1-cohere)*Math.PI*6*t:(1-cohere)*Math.PI*4*t,rc=new THREE.Color().lerpColors(new THREE.Color(0xff2222),new THREE.Color(0x2277ff),reg),fc=new THREE.Color().lerpColors(rc,essay.col,desat?0.2:0.45),tang=curve.getTangent(t).normalize();let up=new THREE.Vector3(0,1,0);if(Math.abs(tang.dot(up))>0.95)up.set(1,0,0);const bi=new THREE.Vector3().crossVectors(tang,up).normalize(),nm=new THREE.Vector3().crossVectors(bi,tang).normalize();for(let j=0;j<=rs;j++){const a=(j/rs)*Math.PI*2+twist,s=Math.sin(a),c=Math.cos(a),vx=nm.x*c+bi.x*s,vy=nm.y*c+bi.y*s,vz=nm.z*c+bi.z*s;pos.push(pt.x+vx*rad,pt.y+vy*rad,pt.z+vz*rad);cols.push(fc.r,fc.g,fc.b);norms.push(vx,vy,vz);uvs.push(j/rs,t);}}for(let i=0;i<segs;i++)for(let j=0;j<rs;j++){const a=i*(rs+1)+j,b=(i+1)*(rs+1)+j,c=(i+1)*(rs+1)+(j+1),d=i*(rs+1)+(j+1);idxs.push(a,b,d,b,c,d);}const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));geo.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));geo.setAttribute("normal",new THREE.Float32BufferAttribute(norms,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idxs);const mat=new THREE.MeshPhongMaterial({vertexColors:true,shininess:90,transparent:true,opacity:desat?0.75:0.88,side:THREE.DoubleSide}),mesh=new THREE.Mesh(geo,mat);mesh.visible=essay.visible;so.scene.add(mesh);const nodes=[];essay.schemas.forEach(s=>{const m=dimFn(s),p=new THREE.Vector3(m.x*S,m.y*S,m.z*S),rc=new THREE.Color().lerpColors(new THREE.Color(0xff2222),new THREE.Color(0x2277ff),s[3]),fc=new THREE.Color().lerpColors(rc,essay.col,0.45),sp=new THREE.Mesh(new THREE.SphereGeometry(0.05+s[4]*0.08,10,10),new THREE.MeshPhongMaterial({color:fc,shininess:120}));sp.position.copy(p);sp.visible=essay.visible;so.scene.add(sp);nodes.push(sp);});so.ribbonGroups[idx]={mesh,nodes};});}
+function toggleDesat(){if(groups.length===0){alert("Create a group first -- the fit ribbon is the desaturation manifold.");return;}desatMode=!desatMode;activeGroupForDesat=desatMode?groups[0]:null;document.getElementById("desat-btn").classList.toggle("active",desatMode);rebuildWithDesat(sceneA,s=>({x:s[0]*2-1,y:s[1]*2-1,z:s[2]*2-1}),desatMode,activeGroupForDesat);rebuildWithDesat(sceneB,s=>({x:s[3]*2-1,y:s[4]*2-1,z:s[5]*2-1}),desatMode,activeGroupForDesat);const hint=document.getElementById("desat-hint");if(hint)hint.textContent=desatMode?("DESATURATED -- deviations from ""+activeGroupForDesat.name+"" manifold"):"";}
+function rebuildLegend(){const c=document.getElementById("legend-rows");c.innerHTML="";essays.forEach((e,i)=>{const hex="#"+e.col.getHexString(),grp=groups.find(g=>g.id===e.groupId),row=document.createElement("div");row.className="essay-row"+(e.visible?"":" dimmed");row.innerHTML=`<div class="swatch" style="background:${hex}"></div><div class="e-label">${e.name}<br><span style="color:rgba(160,180,220,0.3);font-size:6px;">${e.label}</span></div>${grp?`<div class="e-group" style="border-color:${"#"+grp.col.getHexString()};">${grp.name}</div>`:""}<div class="e-score">${e.score}%</div>`;row.onclick=()=>toggleEssay(i);c.appendChild(row);});if(groups.length>0){const sep=document.createElement("div");sep.style.cssText="border-top:1px solid var(--border);margin:7px 0;font-family:var(--mono);font-size:6.5px;color:rgba(160,180,220,0.25);padding-top:5px;";sep.textContent="BEST FIT RIBBONS";c.appendChild(sep);groups.forEach(g=>{const hex="#"+g.col.getHexString(),row=document.createElement("div");row.className="essay-row";row.innerHTML=`<div class="swatch" style="background:repeating-linear-gradient(90deg,${hex} 0,${hex} 4px,transparent 4px,transparent 8px);height:2px;"></div><div class="e-label" style="color:rgba(220,220,220,0.7);">${g.name} (fit)<br><span style="color:rgba(160,180,220,0.3);font-size:6px;">${g.essayIndices.length} essays averaged</span></div>`;c.appendChild(row);});}document.getElementById("essay-count").textContent=essays.length+" ESSAYS . "+groups.length+" GROUPS";}
+function toggleEssay(idx){essays[idx].visible=!essays[idx].visible;sceneA.updateVisibility(idx,essays[idx].visible);sceneB.updateVisibility(idx,essays[idx].visible);rebuildLegend();}
+function setupCollapsible(pid,hid){const panel=document.getElementById(pid),header=document.getElementById(hid);let lt=0;function toggle(){panel.classList.toggle("collapsed");}header.addEventListener("click",e=>{const now=Date.now();if(now-lt<350){toggle();lt=0;}else lt=now;});header.addEventListener("touchstart",e=>{e.stopPropagation();const now=Date.now();if(now-lt<350){toggle();lt=0;e.preventDefault();}else lt=now;},{passive:false});}
+setupCollapsible("legend","legend-header");setupCollapsible("dimkey","dimkey-header");
+let src=0;const dN=["INTRO","BODY_1","BODY_2","BODY_3","COUNTER","EVIDENCE","CONCLUSION","CLOSE","EXTENDED"];
+function addSchemaRow(v){const tb=document.getElementById("schema-rows"),row=document.createElement("tr"),vals=v||[0.5,0.5,0.5,0.5,0.5,0.5],name=dN[src]||("S_"+(src+1));row.innerHTML=`<td class="schema-name">${name}</td>${vals.map(x=>`<td><input type="number" step="0.1" min="0" max="1" value="${x}" style="width:44px"></td>`).join("")}<td><button class="remove-row" onclick="this.closest('tr').remove()">&#10005;</button></td>`;tb.appendChild(row);src++;}
+function resetForm(){["inp-name","inp-score","inp-label"].forEach(id=>document.getElementById(id).value="");document.getElementById("inp-color").value="#ff44ff";document.getElementById("inp-group").value="";document.getElementById("schema-rows").innerHTML="";src=0;for(let i=0;i<4;i++)addSchemaRow();}
+function addEssay(){const name=document.getElementById("inp-name").value.trim()||("Essay_"+(essays.length+1)),score=parseInt(document.getElementById("inp-score").value)||0,label=document.getElementById("inp-label").value.trim()||name,colorHex=document.getElementById("inp-color").value,groupId=document.getElementById("inp-group").value||null,rows=document.querySelectorAll("#schema-rows tr");if(!rows.length){alert("Add at least one schema row.");return;}const schemas=[];rows.forEach(row=>{const inputs=row.querySelectorAll("input[type=number]"),vals=Array.from(inputs).map(i=>Math.max(0,Math.min(1,parseFloat(i.value)||0)));if(vals.length===6)schemas.push(vals);});const essay={name,label,score,groupId:groupId?parseInt(groupId):null,col:new THREE.Color(colorHex),visible:true,schemas},idx=essays.length;essays.push(essay);sceneA.buildRibbon(essay,idx);sceneB.buildRibbon(essay,idx);if(essay.groupId!==null){const grp=groups.find(g=>g.id===essay.groupId);if(grp&&!grp.essayIndices.includes(idx)){grp.essayIndices.push(idx);grp.fitSchemas=computeBestFit(grp.essayIndices);sceneA.buildFitRibbon(grp.id,grp.fitSchemas,grp.col);sceneB.buildFitRibbon(grp.id,grp.fitSchemas,grp.col);}}rebuildLegend();updateEssayList();updateGroupCheckboxes();resetForm();}
+function updateEssayList(){const c=document.getElementById("essay-list");c.innerHTML="";essays.forEach((e,i)=>{const hex="#"+e.col.getHexString(),item=document.createElement("div");item.className="essay-list-item";item.innerHTML=`<div class="eli-swatch" style="background:${hex}"></div><div class="eli-name">${e.name}</div><div class="eli-score">${e.score}%</div><button class="eli-del" onclick="removeEssay(${i},event)">&#10005;</button>`;c.appendChild(item);});const sel=document.getElementById("inp-group");sel.innerHTML="<option value="">-- none --</option>";groups.forEach(g=>sel.innerHTML+=`<option value="${g.id}">${g.name}</option>`);}
+function removeEssay(idx,e){e.stopPropagation();if(essays.length<=1)return;const g1=sceneA.ribbonGroups[idx];if(g1){g1.mesh&&sceneA.scene.remove(g1.mesh);(g1.nodes||[]).forEach(n=>sceneA.scene.remove(n));}const g2=sceneB.ribbonGroups[idx];if(g2){g2.mesh&&sceneB.scene.remove(g2.mesh);(g2.nodes||[]).forEach(n=>sceneB.scene.remove(n));}essays.splice(idx,1);groups.forEach(g=>{g.essayIndices=g.essayIndices.filter(i=>i!==idx).map(i=>i>idx?i-1:i);if(g.essayIndices.length>0){g.fitSchemas=computeBestFit(g.essayIndices);sceneA.buildFitRibbon(g.id,g.fitSchemas,g.col);sceneB.buildFitRibbon(g.id,g.fitSchemas,g.col);}else{sceneA.removeFitRibbon(g.id);sceneB.removeFitRibbon(g.id);}});sceneA.rebuildAll();sceneB.rebuildAll();rebuildLegend();updateEssayList();updateGroupCheckboxes();renderGroupList();}
+function updateGroupCheckboxes(){const c=document.getElementById("grp-essay-checkboxes");c.innerHTML="";essays.forEach((e,i)=>{const hex="#"+e.col.getHexString(),row=document.createElement("div");row.className="checkbox-row";row.innerHTML=`<input type="checkbox" id="grp-cb-${i}" value="${i}"><div class="swatch" style="background:${hex};width:14px;height:4px;border-radius:2px;flex-shrink:0;"></div><label for="grp-cb-${i}">${e.name} (${e.score}%)</label>`;c.appendChild(row);});}
+function createGroup(){const name=document.getElementById("grp-name").value.trim()||("Group_"+(groups.length+1)),colorHex=document.getElementById("grp-color").value,checked=Array.from(document.querySelectorAll("#grp-essay-checkboxes input:checked")).map(cb=>parseInt(cb.value));if(checked.length<2){alert("Select at least 2 essays.");return;}const id=groupIdCounter++,fitSchemas=computeBestFit(checked),col=new THREE.Color(colorHex);groups.push({id,name,col,essayIndices:checked,fitSchemas});sceneA.buildFitRibbon(id,fitSchemas,col);sceneB.buildFitRibbon(id,fitSchemas,col);checked.forEach(i=>essays[i].groupId=id);document.getElementById("grp-name").value="";rebuildLegend();updateEssayList();updateGroupCheckboxes();renderGroupList();}
+function renderGroupList(){const c=document.getElementById("group-list");c.innerHTML="";if(!groups.length){c.innerHTML="<div style="font-family:var(--mono);font-size:7.5px;color:rgba(160,180,220,0.25);padding:8px 0;">No groups yet.</div>";return;}groups.forEach(g=>{const hex="#"+g.col.getHexString(),en=g.essayIndices.map(i=>essays[i]?essays[i].name:"[removed]").join(", "),avg=g.essayIndices.filter(i=>essays[i]).reduce((s,i)=>s+essays[i].score,0)/Math.max(g.essayIndices.filter(i=>essays[i]).length,1),card=document.createElement("div");card.className="group-card";card.innerHTML=`<div class="group-card-head"><div class="group-swatch" style="background:${hex};"></div><div class="group-name">${g.name}</div><button class="group-btn danger" onclick="removeGroup(${g.id})">DELETE</button></div><div class="group-essays">${en}</div><div class="group-fit-info">Best fit . avg ${avg.toFixed(0)}% . ${g.essayIndices.length} essays</div>`;c.appendChild(card);});}
+function removeGroup(id){const idx=groups.findIndex(g=>g.id===id);if(idx===-1)return;sceneA.removeFitRibbon(id);sceneB.removeFitRibbon(id);essays.forEach(e=>{if(e.groupId===id)e.groupId=null;});groups.splice(idx,1);rebuildLegend();updateEssayList();renderGroupList();}
+function toggleDataPanel(){const panel=document.getElementById("data-panel"),btn=document.getElementById("data-btn");panel.classList.toggle("open");btn.classList.toggle("active",panel.classList.contains("open"));if(panel.classList.contains("open")){updateEssayList();updateGroupCheckboxes();renderGroupList();}}
+function switchDpTab(tab,el){document.querySelectorAll(".dp-tab").forEach(t=>t.classList.remove("active"));el.classList.add("active");document.getElementById("dp-essays").style.display=tab==="essays"?"block":"none";document.getElementById("dp-groups").style.display=tab==="groups"?"block":"none";}
+function setView(mode,tabEl){document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));if(tabEl)tabEl.classList.add("active");const wA=document.getElementById("wrap-a"),wB=document.getElementById("wrap-b");if(mode==="split"){wA.classList.remove("hidden");wB.classList.remove("hidden");}else if(mode==="left"){wA.classList.remove("hidden");wB.classList.add("hidden");}else{wA.classList.add("hidden");wB.classList.remove("hidden");}}
+resetForm();rebuildLegend();updateEssayList();updateGroupCheckboxes();renderGroupList();
+let t=0;(function loop(){requestAnimationFrame(loop);t+=0.005;sceneA.animate(t);sceneB.animate(t);})();
+</script>
+</body>
+</html>
