@@ -20,65 +20,62 @@ from nltk.corpus import brown as _brown_corpus
 from nltk import bigrams as _bigrams
 from collections import defaultdict
 
-nltk.download('brown',     quiet=True)
-nltk.download('punkt',     quiet=True)
-nltk.download('punkt_tab', quiet=True)
+nltk.download('brown',          quiet=True)
+nltk.download('punkt',          quiet=True)
+nltk.download('punkt_tab',      quiet=True)
+nltk.download('universal_tagset', quiet=True)
 
 _nlp = spacy.load("en_core_web_sm")
 
-# ── Bigram language model (proxy for GPT-2; swap _raw_perplexity when
-#    GPT-2 weights are available).  Normalization range is calibrated for
-#    bigram perplexity values which run ~200–5000, not GPT-2's 20–500. ────────
+# ── POS-tag bigram language model ─────────────────────────────────────────────
+# Word-bigram models fail on modern text because the Brown corpus (1960s) has
+# high OOV rates for contemporary vocabulary, making both AI and human samples
+# equally opaque.  POS-tag bigrams are vocabulary-independent: they capture
+# *syntactic regularity*, which is the true signal — AI prose uses more
+# repetitive clause templates; human academic writing uses more varied structure.
+#
+# Proxy calibration: POS bigram perplexity typically ranges 4–60 over Brown.
+# Normalization: log(4) – log(60).
+#
+# Swap _raw_perplexity for the GPT-2 version once weights are accessible.
+# ─────────────────────────────────────────────────────────────────────────────
 
-_PROXY_LOG_MIN = math.log(200)    # low-entropy / formulaic text floor
-_PROXY_LOG_MAX = math.log(5000)   # high-entropy / complex academic text ceiling
+_PROXY_LOG_MIN   = math.log(4)
+_PROXY_LOG_MAX   = math.log(60)
 _PROXY_LOG_RANGE = _PROXY_LOG_MAX - _PROXY_LOG_MIN
 
-_lm_bigrams   = None
-_lm_unigrams  = None
-_lm_vocab     = None
-_lm_V         = None
+_pos_bigrams  = None
+_pos_unigrams = None
+_pos_V        = None
 
 
-def _build_lm():
-    global _lm_bigrams, _lm_unigrams, _lm_vocab, _lm_V
-    print("  [lm] building bigram model from Brown corpus...", flush=True)
-    words = [w.lower() for w in _brown_corpus.words()]
-    from nltk import FreqDist
-    freq = FreqDist(words)
-    # vocabulary: words that appear at least twice
-    vocab = {w for w, c in freq.items() if c >= 2}
-    vocab.update({'<s>', '</s>', '<UNK>'})
-
-    unigrams: dict = defaultdict(int)
+def _build_pos_lm():
+    global _pos_bigrams, _pos_unigrams, _pos_V
+    print("  [lm] building POS-tag bigram model from Brown corpus...", flush=True)
     bgrams:   dict = defaultdict(lambda: defaultdict(int))
+    unigrams: dict = defaultdict(int)
 
-    for sent in _brown_corpus.sents():
-        toks = (['<s>']
-                + [w.lower() if w.lower() in vocab else '<UNK>' for w in sent]
+    for tagged_sent in _brown_corpus.tagged_sents(tagset='universal'):
+        tags = (['<s>']
+                + [tag for _, tag in tagged_sent]
                 + ['</s>'])
-        for w in toks:
-            unigrams[w] += 1
-        for w1, w2 in _bigrams(toks):
-            bgrams[w1][w2] += 1
+        for t in tags:
+            unigrams[t] += 1
+        for t1, t2 in _bigrams(tags):
+            bgrams[t1][t2] += 1
 
-    _lm_bigrams  = bgrams
-    _lm_unigrams = unigrams
-    _lm_vocab    = vocab
-    _lm_V        = len(vocab)
-    print(f"  [lm] ready. vocab={_lm_V:,}", flush=True)
-
-
-def _ensure_lm():
-    if _lm_bigrams is None:
-        _build_lm()
+    _pos_bigrams  = bgrams
+    _pos_unigrams = unigrams
+    _pos_V        = len(unigrams)
+    print(f"  [lm] ready. POS vocab={_pos_V}", flush=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STEP 1 — perplexity (bigram proxy; interface identical to GPT-2 version)
-# ─────────────────────────────────────────────────────────────────────────────
+def _ensure_pos_lm():
+    if _pos_bigrams is None:
+        _build_pos_lm()
 
-# Original GPT-2 constants kept for reference; proxy uses _PROXY_* above.
+
+# Original GPT-2 constants kept for reference
 _LOG_MIN   = math.log(20)
 _LOG_MAX   = math.log(500)
 _LOG_RANGE = _LOG_MAX - _LOG_MIN
@@ -86,24 +83,27 @@ _LOG_RANGE = _LOG_MAX - _LOG_MIN
 
 def _raw_perplexity(text: str) -> float:
     """
-    Bigram language model perplexity (Brown corpus, Laplace smoothed).
-    Drop-in proxy for GPT-2 perplexity.  Replace this function with the
-    GPT-2 implementation once model weights are accessible.
+    POS-tag bigram perplexity (Brown corpus universal tagset, Laplace smoothed).
+    Vocabulary-independent proxy for GPT-2 perplexity.
+    AI text: more repetitive POS patterns → lower perplexity.
+    Human academic text: more varied syntax → higher perplexity.
+    Replace with GPT-2 implementation once model weights are accessible.
     """
-    _ensure_lm()
-    tokens_raw = nltk.word_tokenize(text.lower())
-    tokens = (['<s>']
-              + [w if w in _lm_vocab else '<UNK>' for w in tokens_raw]
-              + ['</s>'])
-    if len(tokens) < 3:
-        return 500.0
+    _ensure_pos_lm()
+    doc = _nlp(text)
+    # spaCy POS → Brown universal tagset approximation
+    tags = (['<s>']
+            + [tok.pos_ for tok in doc if not tok.is_space]
+            + ['</s>'])
+    if len(tags) < 3:
+        return 10.0
     log_prob = 0.0
     n = 0
-    for w1, w2 in _bigrams(tokens):
-        p = (_lm_bigrams[w1][w2] + 1) / (_lm_unigrams[w1] + _lm_V)
+    for t1, t2 in _bigrams(tags):
+        p = (_pos_bigrams[t1][t2] + 1) / (_pos_unigrams[t1] + _pos_V)
         log_prob += math.log(p)
         n += 1
-    return math.exp(-log_prob / n) if n > 0 else 500.0
+    return math.exp(-log_prob / n) if n > 0 else 10.0
 
 
 def score_perplexity(text: str) -> float:
