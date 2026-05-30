@@ -1,0 +1,106 @@
+{
+  "_format_version": "v5",
+  "_description": "TRICORE Forensic Ribbon Visualiser — current data format (6-channel schema)",
+
+  "_schema_fields": {
+    "index_0": { "name": "CONSTRAINT",       "graph": "A", "axis": "X", "poles": ["EXPLICIT", "MISSING"],    "visual": "position" },
+    "index_1": { "name": "INHERITANCE",      "graph": "A", "axis": "Y", "poles": ["TOP_DOWN", "BOTTOM_UP"],  "visual": "position" },
+    "index_2": { "name": "SPECIFICITY",      "graph": "A", "axis": "Z", "poles": ["SPEC_4", "SPEC_0"],       "visual": "position" },
+    "index_3": { "name": "REGISTER",         "graph": "B", "axis": "X", "poles": ["EPISTEMIC", "ABSENT"],    "visual": "position + ribbon colour (red→blue)" },
+    "index_4": { "name": "DERIVATION",       "graph": "B", "axis": "Y", "poles": ["DERIVED", "JUMPED"],      "visual": "position + ribbon radius + node size" },
+    "index_5": { "name": "COHERENCE",        "graph": "B", "axis": "Z", "poles": ["INAUDIBLE", "DISSONANT"], "visual": "position + ribbon twist" }
+  },
+
+  "_schema_row_format": "[constraint, inheritance, specificity, register, derivation, coherence]  — all floats 0.0–1.0",
+
+  "_paragraph_names": ["INTRO", "BODY_1", "BODY_2", "BODY_3", "COUNTER", "EVIDENCE", "CONCLUSION", "CLOSE", "EXTENDED"],
+
+  "essays": [
+    {
+      "name": "HUMAN_01",
+      "label": "Pure Human Student",
+      "score": 0,
+      "color": "#ff4444",
+      "groupId": null,
+      "schemas": [
+        [0.0, 0.0, 0.0, 0.0, 0.3, 0.5],
+        [0.0, 0.0, 0.4, 0.0, 0.2, 0.4],
+        [0.0, 0.0, 0.4, 0.0, 0.2, 0.4],
+        [0.0, 0.0, 0.0, 0.0, 0.1, 0.3]
+      ]
+    },
+    {
+      "name": "AI_01",
+      "label": "Early Model",
+      "score": 35,
+      "color": "#ff9933",
+      "groupId": null,
+      "schemas": [
+        [0.1, 0.1, 0.0, 0.0, 0.3, 0.5],
+        [0.0, 0.1, 0.0, 0.0, 0.3, 0.5],
+        [0.0, 0.1, 0.0, 0.0, 0.3, 0.5],
+        [0.0, 0.1, 0.0, 0.0, 0.3, 0.5],
+        [0.0, 0.1, 0.0, 0.0, 0.3, 0.5]
+      ]
+    },
+    {
+      "name": "DeepSeek",
+      "label": "TAMPER ZONE 3 Layers",
+      "score": 55,
+      "color": "#ffdd44",
+      "groupId": null,
+      "schemas": [
+        [0.3, 0.3, 0.0, 0.2, 0.4, 0.6],
+        [0.8, 0.7, 0.6, 0.8, 0.8, 0.8],
+        [0.8, 0.7, 0.5, 0.8, 0.8, 0.8],
+        [0.3, 0.1, 0.3, 0.2, 0.3, 0.2],
+        [0.2, 0.1, 0.4, 0.2, 0.4, 0.3],
+        [0.4, 0.1, 0.7, 0.2, 0.4, 0.3],
+        [0.1, 0.0, 0.0, 0.6, 0.2, 0.0]
+      ]
+    },
+    {
+      "name": "Sophisticated AI",
+      "label": "High Quality Internal Seam",
+      "score": 88,
+      "color": "#44aaff",
+      "groupId": null,
+      "schemas": [
+        [0.9, 0.9, 0.0, 0.5, 0.8, 0.9],
+        [1.0, 0.9, 0.9, 0.9, 1.0, 1.0],
+        [1.0, 0.9, 0.8, 0.9, 1.0, 1.0],
+        [1.0, 0.9, 0.9, 0.9, 1.0, 1.0],
+        [1.0, 0.8, 0.8, 0.9, 0.9, 1.0],
+        [0.5, 0.3, 0.0, 0.4, 0.7, 0.9],
+        [0.7, 0.8, 0.0, 0.6, 0.8, 0.9]
+      ]
+    },
+    {
+      "name": "Claude 02",
+      "label": "Peak Analytical Perfect Chain",
+      "score": 95,
+      "color": "#44ffaa",
+      "groupId": null,
+      "schemas": [
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [0.7, 0.9, 0.5, 0.7, 0.8, 0.9],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.5, 1.0, 1.0, 1.0]
+      ]
+    }
+  ],
+
+  "_extended_schema_proposal": {
+    "_note": "Proposed 10-element schema row for extended scoring channels",
+    "_format": "[constraint, inheritance, specificity, register, derivation, coherence, gpt2_perplexity, underconstrained_rate, seam_probability, edit_state]",
+    "index_6": { "name": "GPT2_PERPLEXITY",       "range": "0.0–1.0", "note": "normalised from raw perplexity score per paragraph" },
+    "index_7": { "name": "UNDERCONSTRAINED_RATE",  "range": "0.0–1.0", "note": "rate of under-constrained sentences in paragraph" },
+    "index_8": { "name": "SEAM_PROBABILITY",       "range": "0.0–1.0", "note": "probability of authorship seam at this paragraph boundary" },
+    "index_9": { "name": "EDIT_STATE",             "range": "0.0–1.0", "note": "edit intensity: 0=untouched, 1=heavily edited" }
+  }
+}
